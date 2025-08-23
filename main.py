@@ -35,11 +35,11 @@ def check_subscription(user_id):
 @bot.message_handler(commands=['start'])
 def start(message):
     if not check_subscription(message.from_user.id):
-        text = "📢 Ботдан фойдаланиш учун қуйидаги каналларга ОБУНА БЎЛИНГ:\n\n"
+        text = "📢 БОТДАН ФОЙДАЛАНИШ УЧУН ҚУЙИДАГИ КАНАЛЛАРГА ОБУНА БЎЛИНГ:\n\n"
         text += "1️⃣ [Kanal 1](https://t.me/avafilmss)\n"
         text += "2️⃣ [Kanal 2](https://t.me/mysportuz)\n"
         text += "3️⃣ [Kanal 3](https://t.me/shoubiznes_new)\n\n"
-        text += "✅ Обуна бўлгач, /start ни қайта босинг!"
+        text += "✅ ОБУНА БЎЛГАНИНГИЗДАН СЎНГ /start НИ ҚАЙТА БОСИНГ!"
         bot.send_message(message.chat.id, text, parse_mode="Markdown")
         return
     
@@ -61,15 +61,6 @@ def handle_video(message):
 
 @bot.message_handler(func=lambda m: True)
 def send_movie(message):
-    if not check_subscription(message.from_user.id):
-        text = "📢 Илтимос, аввал қуйидаги каналларга обуна бўлинг:\n\n"
-        text += "1️⃣ [Kanal 1](https://t.me/avafilmss)\n"
-        text += "2️⃣ [Kanal 2](https://t.me/mysportuz)\n"
-        text += "3️⃣ [Kanal 3](https://t.me/shoubiznes_new)\n\n"
-        text += "✅ Обуна бўлгач, /start ни қайта босинг!"
-        bot.send_message(message.chat.id, text, parse_mode="Markdown")
-        return
-    
     movies = load_movies()
     movie_id = message.text.strip()
     if movie_id in movies:
