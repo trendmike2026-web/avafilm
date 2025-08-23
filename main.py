@@ -20,6 +20,7 @@ def start(message):
     )
 
 
+
 # 🎥 Админ кино қўшиши
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
