@@ -91,4 +91,50 @@ def send_movie(message):
         bot.reply_to(message, "❌ Бундай рақамли кино топилмади!")
 
 print("✅ Bot ишга тушди...")
+
+# 📊 Статистика
+USERS_FILE = "users.json"
+
+if not os.path.exists(USERS_FILE):
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump({"users": [], "search_count": 0, "sent_movies": 0}, f, ensure_ascii=False, indent=4)
+
+def load_users():
+    with open(USERS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_users(data):
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+@bot.message_handler(commands=['stats'])
+def stats(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    users = load_users()
+    text = f"📊 <b>Статистика</b>\n\n"
+    text += f"👥 Жами фойдаланувчилар: {len(users['users'])}\n"
+    text += f"🔎 Кино қидирганлар: {users['search_count']}\n"
+    text += f"🎬 Жўнатилган кинолар: {users['sent_movies']}"
+    bot.send_message(message.chat.id, text, parse_mode="HTML")
+
+@bot.message_handler(commands=['post'])
+def post(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    text = message.text.replace("/post", "").strip()
+    if not text:
+        bot.reply_to(message, "❌ Реклама матни ёзинг: `/post Реклама матни`", parse_mode="Markdown")
+        return
+
+    users = load_users()
+    sent = 0
+    for user_id in users["users"]:
+        try:
+            bot.send_message(user_id, f"📢 {text}")
+            sent += 1
+        except:
+            pass
+    bot.reply_to(message, f"✅ Реклама {sent} та фойдаланувчига юборилди!")
+
 bot.infinity_polling()
