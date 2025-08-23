@@ -2,16 +2,15 @@ import telebot
 import json
 import os
 
-TOKEN = "SIZNING_TOKENINGIZNI_KUYING"
-bot = telebot.TeleBot(TOKEN)
+TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
+ADMIN_ID = 786536728
 
-# JSON файл номи
+bot = telebot.TeleBot(TOKEN)
 DB_FILE = "movies.json"
 
-# Агар JSON йўқ бўлса, янгидан яратамиз
 if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump({}, f)
+        json.dump({}, f, ensure_ascii=False, indent=4)
 
 def load_movies():
     with open(DB_FILE, "r", encoding="utf-8") as f:
@@ -21,46 +20,30 @@ def save_movies(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# START буйруғи
 @bot.message_handler(commands=['start'])
 def start(message):
-    text = (
-        "🎬 Салом!\n"
-        "Бу бот орқали сиз янги фильмлар ва сериалларни кўришингиз мумкин.\n\n"
-        "📌 Менга кино рақамини ёзинг."
-    )
-    bot.send_message(message.chat.id, text)
+    bot.reply_to(message, "👋 Салом! Бу бот орқали сиз янги фильмлар ва сериалларни кўришингиз мумкин.\n\n🔢 Менга кино рақамини ёзинг ва мен сизга топиб бераман.")
 
-# Фақат рақам қабул қилади
-@bot.message_handler(func=lambda msg: msg.text.isdigit())
+@bot.message_handler(content_types=['video'])
+def handle_video(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    movies = load_movies()
+    movie_id = str(len(movies) + 1)
+    caption = message.caption if message.caption else ""
+    movies[movie_id] = {"file_id": message.video.file_id, "title": caption}
+    save_movies(movies)
+    bot.reply_to(message, f"✅ Кино сақланди! Рақами: {movie_id}")
+
+@bot.message_handler(func=lambda m: True)
 def send_movie(message):
     movies = load_movies()
-    movie_id = message.text
-
+    movie_id = message.text.strip()
     if movie_id in movies:
-        bot.send_message(message.chat.id, f"📽 Мана киноконтент:\n{movies[movie_id]}")
+        movie = movies[movie_id]
+        bot.send_video(message.chat.id, movie["file_id"], caption=movie["title"])
     else:
-        bot.send_message(message.chat.id, "❌ Бундай рақамли кино топилмади.")
+        bot.reply_to(message, "❌ Бундай рақамли кино топилмади!")
 
-# Фақат админ кино қўшиши мумкин
-ADMIN_ID = 123456789  # ўз Telegram ID’ingизни қўйинг
-
-@bot.message_handler(commands=['add'])
-def add_movie(message):
-    if message.from_user.id != ADMIN_ID:
-        return  # бошқаларга чиқмайди
-
-    try:
-        parts = message.text.split(" ", 2)
-        movie_id = parts[1]
-        movie_link = parts[2]
-
-        movies = load_movies()
-        movies[movie_id] = movie_link
-        save_movies(movies)
-
-        bot.send_message(message.chat.id, f"✅ Кино қўшилди!\nID: {movie_id}")
-    except:
-        bot.send_message(message.chat.id, "❌ Фойдаланиш: /add 1 https://kino-link")
-
+print("✅ Bot ишга тушди...")
 bot.infinity_polling()
