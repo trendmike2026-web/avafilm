@@ -3,13 +3,14 @@ import json
 import os
 from telebot import types
 
-TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"   # 🔑 Бот токенинг
-ADMIN_ID = 786536728                # 👤 Сенинг Telegram ID
+# 🔑 Token ва Admin ID
+TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
+ADMIN_ID = 786536728  # ўзингни ID қўйсан
 
-# Kanal ID'лари
+# 🔗 Kanal ID'лари
 CHANNELS = ["-1001206627592", "-1002486463697", "-1002909479609"]
 
-# Kanal linklari (обуна бўлиш учун чиқади)
+# 🔗 Kanal linklari
 CHANNEL_LINKS = [
     ("https://t.me/avafilmss", "Kanal 1"),
     ("https://t.me/mysportuz", "Kanal 2"),
@@ -18,27 +19,27 @@ CHANNEL_LINKS = [
 
 bot = telebot.TeleBot(TOKEN)
 
-# Файллар
-MOVIES_FILE = "movies.json"
+# 📂 Файллар
+DB_FILE = "movies.json"
 USERS_FILE = "users.json"
 
-# Агар файллар йўқ бўлса, яратиб қўямиз
-if not os.path.exists(MOVIES_FILE):
-    with open(MOVIES_FILE, "w", encoding="utf-8") as f:
+# 🎬 movies.json тайёрлаш
+if not os.path.exists(DB_FILE):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump({}, f, ensure_ascii=False, indent=4)
 
+# 👤 users.json тайёрлаш
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump({"users": [], "search_count": 0, "sent_movies": 0}, f, ensure_ascii=False, indent=4)
 
-
-# JSON билан ишлайдиган функциялар
+# 📥 JSON функциялар
 def load_movies():
-    with open(MOVIES_FILE, "r", encoding="utf-8") as f:
+    with open(DB_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def save_movies(data):
-    with open(MOVIES_FILE, "w", encoding="utf-8") as f:
+    with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def load_users():
@@ -49,8 +50,14 @@ def save_users(data):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+# 👥 Фойдаланувчи қўшиш
+def add_user(user_id):
+    users = load_users()
+    if user_id not in users["users"]:
+        users["users"].append(user_id)
+        save_users(users)
 
-# Каналга обуна текшириш
+# 📌 Обуна текшириш
 def check_subscription(user_id):
     for channel in CHANNELS:
         try:
@@ -61,32 +68,26 @@ def check_subscription(user_id):
             return False
     return True
 
-
-# START
+# 🚀 START
 @bot.message_handler(commands=['start'])
 def start(message):
-    users = load_users()
-    if message.from_user.id not in users["users"]:
-        users["users"].append(message.from_user.id)
-        save_users(users)
+    add_user(message.from_user.id)  # ✅ фойдаланувчини базага қўшиш
 
     if not check_subscription(message.from_user.id):
         text = "❌ *Кечирасиз, ботдан фойдаланиш учун қуйидаги каналларга обуна бўлинг:*"
         markup = types.InlineKeyboardMarkup()
         for url, name in CHANNEL_LINKS:
-            markup.add(types.InlineKeyboardButton(f"➕ {name}", url=url))
+            markup.add(types.InlineKeyboardButton(f"➕ {name} га обуна бўлиш", url=url))
         markup.add(types.InlineKeyboardButton("✅ Tasdiqlash", callback_data="check_subs"))
         bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
         return
-
-    bot.send_message(message.chat.id,
-        "👋 Салом!\n\n"
-        "✅ Сиз каналларга обуна бўлгансиз.\n\n"
-        "🎬 Кино рақамини ёзинг ва мен сизга топиб бераман."
+    
+    bot.reply_to(message, 
+        "👋 Салом! ✅ Сиз каналларга обуна бўлгансиз.\n\n"
+        "🔢 Кино рақамини ёзинг ва мен сизга топиб бераман."
     )
 
-
-# SUBS текшириш
+# 🔁 Recheck
 @bot.callback_query_handler(func=lambda call: call.data == "check_subs")
 def recheck(call):
     if check_subscription(call.from_user.id):
@@ -98,8 +99,7 @@ def recheck(call):
     else:
         bot.answer_callback_query(call.id, "❌ Ҳали барча каналларга обуна бўлмагансиз!", show_alert=True)
 
-
-# ADMIN video юборса → базада сақланади
+# 🎬 ADMIN кино юбориши
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
     if message.from_user.id != ADMIN_ID:
@@ -109,26 +109,26 @@ def handle_video(message):
     caption = message.caption if message.caption else ""
     movies[movie_id] = {"file_id": message.video.file_id, "title": caption}
     save_movies(movies)
-    bot.reply_to(message, f"✅ Кино сақланди!\nРақами: {movie_id}")
+    bot.reply_to(message, f"✅ Кино сақланди! Рақами: {movie_id}")
 
-
-# Фойдаланувчи рақам юборса → кино чиқади
-@bot.message_handler(func=lambda m: m.text.isdigit())
+# 🎬 Фойдаланувчи кино излаши
+@bot.message_handler(func=lambda m: True)
 def send_movie(message):
+    add_user(message.from_user.id)  # ✅ фойдаланувчини базага қўшиш
     movies = load_movies()
     users = load_users()
-    users["search_count"] += 1
 
     movie_id = message.text.strip()
     if movie_id in movies:
         movie = movies[movie_id]
         bot.send_video(message.chat.id, movie["file_id"], caption=movie["title"])
+
         users["sent_movies"] += 1
+        save_users(users)
     else:
+        users["search_count"] += 1
+        save_users(users)
         bot.reply_to(message, "❌ Бундай рақамли кино топилмади!")
-
-    save_users(users)
-
 
 # 📊 Статистика
 @bot.message_handler(commands=['stats'])
@@ -142,8 +142,7 @@ def stats(message):
     text += f"🎬 Жўнатилган кинолар: {users['sent_movies']}"
     bot.send_message(message.chat.id, text, parse_mode="HTML")
 
-
-# 📢 Реклама юбориш
+# 📢 Реклама
 @bot.message_handler(commands=['post'])
 def post(message):
     if message.from_user.id != ADMIN_ID:
@@ -162,7 +161,6 @@ def post(message):
         except:
             pass
     bot.reply_to(message, f"✅ Реклама {sent} та фойдаланувчига юборилди!")
-
 
 print("✅ Bot ишга тушди...")
 bot.infinity_polling()
