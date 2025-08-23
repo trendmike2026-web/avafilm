@@ -1,13 +1,16 @@
 import telebot
 import json
 import os
+import threading
+from flask import Flask
 
-TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
+TOKEN = os.getenv("BOT_TOKEN", "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M")
 ADMIN_ID = 786536728
 
 bot = telebot.TeleBot(TOKEN)
 DB_FILE = "movies.json"
 
+# JSON база яратиш
 if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump({}, f, ensure_ascii=False, indent=4)
@@ -20,10 +23,16 @@ def save_movies(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+# /start буйруғи
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "👋 Салом! Бу бот орқали сиз янги фильмлар ва сериалларни кўришингиз мумкин.\n\n🔢 Менга кино рақамини ёзинг ва мен сизга топиб бераман.")
+    bot.reply_to(
+        message,
+        "👋 Салом! Бу бот орқали сиз янги фильмлар ва сериалларни кўришингиз мумкин.\n\n"
+        "🔢 Менга кино рақамини ёзинг ва мен сизга топиб бераман."
+    )
 
+# Админ видео қўшиши
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
     if message.from_user.id != ADMIN_ID:
@@ -35,6 +44,7 @@ def handle_video(message):
     save_movies(movies)
     bot.reply_to(message, f"✅ Кино сақланди! Рақами: {movie_id}")
 
+# Фильм қидириш
 @bot.message_handler(func=lambda m: True)
 def send_movie(message):
     movies = load_movies()
@@ -45,5 +55,17 @@ def send_movie(message):
     else:
         bot.reply_to(message, "❌ Бундай рақамли кино топилмади!")
 
-print("✅ Bot ишга тушди...")
-bot.infinity_polling()
+# Flask web server
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running ✅"
+
+def run_bot():
+    print("✅ Bot ишга тушди...")
+    bot.infinity_polling()
+
+if __name__ == "__main__":
+    threading.Thread(target=run_bot).start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
