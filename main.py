@@ -1,15 +1,27 @@
 import telebot
+import json
+import os
 
-# 🔑 Бот токени
 TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
+ADMIN_ID = 786536728  # сизинг Telegram ID
+
 bot = telebot.TeleBot(TOKEN)
 
-# 👤 Админ ID
-ADMIN_ID = 786536728
+# Файл базаси
+DB_FILE = "movies.json"
 
-# 📂 Кинолар (рақам → {file_id, name})
-movies = {}
-counter = 1
+# Агар файл йўқ бўлса, яратамиз
+if not os.path.exists(DB_FILE):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump({}, f)
+
+def load_movies():
+    with open(DB_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_movies(data):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 # /start
 @bot.message_handler(commands=['start'])
@@ -19,56 +31,37 @@ def start(message):
         "Салом 👋 Бу бот орқали сиз янги фильмлар ва сериалларни кўришингиз мумкин.\nМенга кино рақамини ёзинг"
     )
 
-
-
-# 🎥 Админ кино қўшиши
+# 🎥 Админ видео юклайди
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
-    global counter
-    if message.from_user.id == ADMIN_ID:
-        file_id = message.video.file_id
-        movies[counter] = {"file_id": file_id, "name": None}
-        bot.reply_to(
-            message,
-            f"✅ Кино рақам {counter} сақланди!\nℹ️ Агар истасангиз, кино номини юборинг (ихтиёрий)."
-        )
-        bot.register_next_step_handler(message, save_name, counter)
-        counter += 1
+    if message.from_user.id != ADMIN_ID:
+        return  # Фақат админ юклай олади
 
-# 📝 Кино номини сақлаш (ихтиёрий)
-def save_name(message, movie_id):
-    if message.from_user.id == ADMIN_ID:
-        if message.text.startswith("/"):  # Агар команда ёзса ном сақламаймиз
-            return
-        movies[movie_id]["name"] = message.text
-        bot.reply_to(message, f"🎬 Кино номи сақланди: {message.text}")
+    movies = load_movies()
+    new_id = str(len(movies) + 1)  # янги рақам
+    movies[new_id] = {
+        "file_id": message.video.file_id,
+        "title": message.caption if message.caption else f"Кино {new_id}"
+    }
+    save_movies(movies)
 
-# 🔢 Рақам ёки ном билан кино излаш
+    bot.reply_to(message, f"✅ Кино сақланди!\nРақами: {new_id}")
+
+# 🎬 Фойдаланувчи рақам юборса
 @bot.message_handler(func=lambda m: True)
-def get_movie(message):
-    text = message.text.strip()
-    # Агар рақам бўлса
-    if text.isdigit():
-        num = int(text)
-        if num in movies:
-            bot.send_video(
-                message.chat.id,
-                movies[num]["file_id"],
-                caption=movies[num]["name"] or f"Кино рақами {num}"
-            )
-        else:
-            bot.reply_to(message, "❌ Бундай рақамли кино топилмади.")
-    else:
-        # Агар ном бўлса
-        found = None
-        for mid, data in movies.items():
-            if data["name"] and text.lower() in data["name"].lower():
-                found = data
-                break
-        if found:
-            bot.send_video(message.chat.id, found["file_id"], caption=found["name"])
-        else:
-            bot.reply_to(message, "❌ Бундай номли кино топилмади.")
+def send_movie(message):
+    movies = load_movies()
+    movie_id = message.text.strip()
 
-# 🔄 Ботни ишга тушириш
-bot.polling(none_sto_
+    if movie_id in movies:
+        movie = movies[movie_id]
+        bot.send_video(
+            message.chat.id,
+            movie["file_id"],
+            caption=movie["title"]
+        )
+    else:
+        bot.reply_to(message, "❌ Бундай рақамли кино топилмади!")
+
+print("🤖 Бот ишга тушди...")
+bot.infinity_polling()
