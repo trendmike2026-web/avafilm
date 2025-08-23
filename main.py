@@ -21,6 +21,7 @@ bot = telebot.TeleBot(TOKEN)
 MOVIES_FILE = "movies.json"
 USERS_FILE = "users.json"
 
+# === JSON файллар ===
 if not os.path.exists(MOVIES_FILE):
     with open(MOVIES_FILE, "w", encoding="utf-8") as f:
         json.dump({}, f, ensure_ascii=False, indent=4)
@@ -29,22 +30,26 @@ if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump({"users": [], "search_count": 0, "sent_movies": 0}, f, ensure_ascii=False, indent=4)
 
-# === JSON ===
+
 def load_movies():
     with open(MOVIES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 def save_movies(data):
     with open(MOVIES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+
 def load_users():
     with open(USERS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def save_users(data):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
+
 
 # === Канал текшириш ===
 def check_subscription(user_id):
@@ -56,6 +61,7 @@ def check_subscription(user_id):
         except:
             return False
     return True
+
 
 # === /start ===
 @bot.message_handler(commands=['start'])
@@ -76,6 +82,7 @@ def start(message):
 
     bot.reply_to(message, "👋 Салом! 🔢 Кино рақамини юборинг.")
 
+
 # === Callback: обунани қайта текшириш ===
 @bot.callback_query_handler(func=lambda call: call.data == "check_subs")
 def recheck(call):
@@ -87,6 +94,7 @@ def recheck(call):
         )
     else:
         bot.answer_callback_query(call.id, "❌ Ҳали барча каналларга обуна эмассиз!", show_alert=True)
+
 
 # === ADMIN PANEL ===
 @bot.message_handler(commands=['admin'])
@@ -101,9 +109,11 @@ def admin_panel(message):
     markup.add(types.InlineKeyboardButton("📢 Реклама", callback_data="post"))
     bot.send_message(message.chat.id, "⚙️ <b>Админ панел</b>", parse_mode="HTML", reply_markup=markup)
 
+
 adding_movie = False
 deleting_movie = False
 waiting_for_post = False
+
 
 @bot.callback_query_handler(func=lambda call: True)
 def admin_actions(call):
@@ -144,6 +154,7 @@ def admin_actions(call):
         waiting_for_post = True
         bot.send_message(call.message.chat.id, "📢 Реклама хабарини юборинг (матн, фото ёки видео).")
 
+
 # === VIDEO ADD ===
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
@@ -157,6 +168,7 @@ def handle_video(message):
     save_movies(movies)
     bot.reply_to(message, f"✅ Кино қўшилди! Рақами: {movie_id}")
     adding_movie = False
+
 
 # === DELETE OR SEARCH ===
 @bot.message_handler(func=lambda m: m.text and m.text.isdigit())
@@ -175,6 +187,7 @@ def handle_delete_or_search(message):
     else:
         send_movie(message)
 
+
 # === MOVIE SEARCH ===
 def send_movie(message):
     movies = load_movies()
@@ -189,6 +202,7 @@ def send_movie(message):
         users["search_count"] += 1
         save_users(users)
         bot.reply_to(message, "❌ Бундай рақамли кино йўқ!")
+
 
 # === POST ===
 @bot.message_handler(func=lambda m: True, content_types=['text', 'photo', 'video'])
@@ -211,18 +225,21 @@ def handle_post(message):
         bot.reply_to(message, f"✅ Реклама {sent} та фойдаланувчига жўнатилди!")
         waiting_for_post = False
 
+
 # === FLASK WEBHOOK ===
 app = Flask(__name__)
 
-@app.route("/webhook", methods=["POST"])
+@app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
     bot.process_new_updates([update])
     return "OK", 200
 
+
 @app.route("/")
 def index():
     return "Bot is running!", 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
