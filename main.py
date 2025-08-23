@@ -2,10 +2,11 @@ import telebot
 import json
 import os
 from telebot import types
+from flask import Flask, request
 
 # 🔑 Токен ва Админ ID
-TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
-ADMIN_ID = 786536728
+TOKEN = os.environ.get("8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M")  # Renderда BOT_TOKENни Environment Variables'га қўйинг
+ADMIN_ID = int(os.environ.get("ADMIN_ID", "786536728"))
 
 # Канал ID'лари
 CHANNELS = ["-1001206627592", "-1002486463697", "-1002909479609"]
@@ -168,5 +169,19 @@ def handle_all(message):
         if message.content_type == "text":
             send_movie(message)
 
-print("✅ Bot ишга тушди...")
-bot.infinity_polling()
+# === Flask Webhook ===
+app = Flask(__name__)
+
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
+    bot.process_new_updates([update])
+    return "OK", 200
+
+@app.route("/")
+def index():
+    return "Bot is running!", 200
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
