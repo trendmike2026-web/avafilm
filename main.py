@@ -5,13 +5,11 @@ from telebot import types
 from flask import Flask, request
 
 # 🔑 Токен ва Админ ID
-TOKEN = os.environ.get("8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M")  # Renderда BOT_TOKENни Environment Variables'га қўйинг
+TOKEN = os.environ.get("BOT_TOKEN")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "786536728"))
 
 # Канал ID'лари
 CHANNELS = ["-1001206627592", "-1002486463697", "-1002909479609"]
-
-# Канал линклари
 CHANNEL_LINKS = [
     ("https://t.me/avafilmss", "Kanal 1"),
     ("https://t.me/mysportuz", "Kanal 2"),
@@ -20,11 +18,9 @@ CHANNEL_LINKS = [
 
 bot = telebot.TeleBot(TOKEN)
 
-# 📂 Файллар
 MOVIES_FILE = "movies.json"
 USERS_FILE = "users.json"
 
-# Файллар мавжуд бўлмаса, яратилади
 if not os.path.exists(MOVIES_FILE):
     with open(MOVIES_FILE, "w", encoding="utf-8") as f:
         json.dump({}, f, ensure_ascii=False, indent=4)
@@ -33,7 +29,7 @@ if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump({"users": [], "search_count": 0, "sent_movies": 0}, f, ensure_ascii=False, indent=4)
 
-# === JSON функциялар ===
+# === JSON ===
 def load_movies():
     with open(MOVIES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -50,7 +46,7 @@ def save_users(data):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# === Каналга обуна текшириш ===
+# === Канал текшириш ===
 def check_subscription(user_id):
     for channel in CHANNELS:
         try:
@@ -70,44 +66,116 @@ def start(message):
         save_users(users)
 
     if not check_subscription(message.from_user.id):
-        text = "❌ *Кечирасиз, ботдан фойдаланиш учун қуйидаги каналларга обуна бўлинг:*"
+        text = "❌ *Кечирасиз, каналларга обуна бўлиш керак!*"
         markup = types.InlineKeyboardMarkup()
         for url, name in CHANNEL_LINKS:
-            markup.add(types.InlineKeyboardButton(f"➕ {name} га обуна бўлиш", url=url))
+            markup.add(types.InlineKeyboardButton(f"➕ {name}", url=url))
         markup.add(types.InlineKeyboardButton("✅ Tasdiqlash", callback_data="check_subs"))
         bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
         return
 
-    bot.reply_to(message,
-        "👋 Салом! ✅ Сиз каналларга обуна бўлгансиз.\n\n"
-        "🔢 Кино рақамини ёзинг ва мен сизга топиб бераман."
-    )
+    bot.reply_to(message, "👋 Салом! 🔢 Кино рақамини юборинг.")
 
 # === Callback: обунани қайта текшириш ===
 @bot.callback_query_handler(func=lambda call: call.data == "check_subs")
 def recheck(call):
     if check_subscription(call.from_user.id):
         bot.edit_message_text(
-            "✅ Сиз обуна бўлдингиз! Энди кино рақамини юборишингиз мумкин.",
+            "✅ Сиз обуна бўлдингиз! Энди кино рақамини юборинг.",
             chat_id=call.message.chat.id,
             message_id=call.message.message_id
         )
     else:
-        bot.answer_callback_query(call.id, "❌ Ҳали барча каналларга обуна бўлмагансиз!", show_alert=True)
+        bot.answer_callback_query(call.id, "❌ Ҳали барча каналларга обуна эмассиз!", show_alert=True)
 
-# === Фильм юклаш (фақат админ) ===
+# === ADMIN PANEL ===
+@bot.message_handler(commands=['admin'])
+def admin_panel(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🎬 Кино қўшиш", callback_data="add_movie"))
+    markup.add(types.InlineKeyboardButton("📂 Рўйхат", callback_data="list_movies"))
+    markup.add(types.InlineKeyboardButton("🗑 Кино ўчириш", callback_data="delete_movie"))
+    markup.add(types.InlineKeyboardButton("📊 Статистика", callback_data="stats"))
+    markup.add(types.InlineKeyboardButton("📢 Реклама", callback_data="post"))
+    bot.send_message(message.chat.id, "⚙️ <b>Админ панел</b>", parse_mode="HTML", reply_markup=markup)
+
+adding_movie = False
+deleting_movie = False
+waiting_for_post = False
+
+@bot.callback_query_handler(func=lambda call: True)
+def admin_actions(call):
+    global adding_movie, deleting_movie, waiting_for_post
+
+    if call.from_user.id != ADMIN_ID:
+        return
+
+    if call.data == "add_movie":
+        adding_movie = True
+        bot.send_message(call.message.chat.id, "🎬 Кино видеосини юборинг (caption → ном).")
+
+    elif call.data == "list_movies":
+        movies = load_movies()
+        if not movies:
+            bot.send_message(call.message.chat.id, "📂 Базада кино йўқ!")
+            return
+        text = "🎬 <b>Кино рўйхати</b>\n\n"
+        for movie_id, movie in movies.items():
+            text += f"{movie_id}. {movie['title']}\n"
+        bot.send_message(call.message.chat.id, text, parse_mode="HTML")
+
+    elif call.data == "delete_movie":
+        deleting_movie = True
+        bot.send_message(call.message.chat.id, "🗑 Қайси кино рақамини ўчирмоқчисиз? Юборинг.")
+
+    elif call.data == "stats":
+        users = load_users()
+        text = (
+            f"📊 <b>Статистика</b>\n\n"
+            f"👥 Жами: {len(users['users'])}\n"
+            f"🔎 Қидирувлар: {users['search_count']}\n"
+            f"🎬 Жўнатилганлар: {users['sent_movies']}"
+        )
+        bot.send_message(call.message.chat.id, text, parse_mode="HTML")
+
+    elif call.data == "post":
+        waiting_for_post = True
+        bot.send_message(call.message.chat.id, "📢 Реклама хабарини юборинг (матн, фото ёки видео).")
+
+# === VIDEO ADD ===
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
-    if message.from_user.id != ADMIN_ID:
+    global adding_movie
+    if message.from_user.id != ADMIN_ID or not adding_movie:
         return
     movies = load_movies()
     movie_id = str(len(movies) + 1)
-    caption = message.caption if message.caption else ""
+    caption = message.caption if message.caption else f"Kino {movie_id}"
     movies[movie_id] = {"file_id": message.video.file_id, "title": caption}
     save_movies(movies)
-    bot.reply_to(message, f"✅ Кино сақланди! Рақами: {movie_id}")
+    bot.reply_to(message, f"✅ Кино қўшилди! Рақами: {movie_id}")
+    adding_movie = False
 
-# === Фильм қидириш ===
+# === DELETE ===
+@bot.message_handler(func=lambda m: m.text and m.text.isdigit())
+def handle_delete_or_search(message):
+    global deleting_movie
+    if deleting_movie and message.from_user.id == ADMIN_ID:
+        movies = load_movies()
+        movie_id = message.text.strip()
+        if movie_id in movies:
+            del movies[movie_id]
+            save_movies(movies)
+            bot.reply_to(message, f"🗑 Кино {movie_id} ўчирилди!")
+        else:
+            bot.reply_to(message, "❌ Бундай рақам йўқ.")
+        deleting_movie = False
+    else:
+        send_movie(message)
+
+# === MOVIE SEARCH ===
 def send_movie(message):
     movies = load_movies()
     users = load_users()
@@ -120,33 +188,11 @@ def send_movie(message):
     else:
         users["search_count"] += 1
         save_users(users)
-        bot.reply_to(message, "❌ Бундай рақамли кино топилмади!")
+        bot.reply_to(message, "❌ Бундай рақамли кино йўқ!")
 
-# === Статистика ===
-@bot.message_handler(commands=['stats'])
-def stats(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    users = load_users()
-    text = f"📊 <b>Статистика</b>\n\n"
-    text += f"👥 Жами фойдаланувчилар: {len(users['users'])}\n"
-    text += f"🔎 Кино қидирганлар: {users['search_count']}\n"
-    text += f"🎬 Жўнатилган кинолар: {users['sent_movies']}"
-    bot.send_message(message.chat.id, text, parse_mode="HTML")
-
-# === Реклама пост (матн, фото, видео) ===
-waiting_for_post = False
-
-@bot.message_handler(commands=['post'])
-def ask_post(message):
-    global waiting_for_post
-    if message.from_user.id != ADMIN_ID:
-        return
-    bot.reply_to(message, "📢 Реклама юбориш учун хабарингизни (матн, фото ёки видео) жўнатинг.")
-    waiting_for_post = True
-
+# === POST ===
 @bot.message_handler(func=lambda m: True, content_types=['text', 'photo', 'video'])
-def handle_all(message):
+def handle_post(message):
     global waiting_for_post
     if waiting_for_post and message.from_user.id == ADMIN_ID:
         users = load_users()
@@ -156,20 +202,16 @@ def handle_all(message):
                 if message.content_type == "text":
                     bot.send_message(user_id, message.text)
                 elif message.content_type == "photo":
-                    bot.send_photo(user_id, message.photo[-1].file_id, caption=message.caption if message.caption else "")
+                    bot.send_photo(user_id, message.photo[-1].file_id, caption=message.caption or "")
                 elif message.content_type == "video":
-                    bot.send_video(user_id, message.video.file_id, caption=message.caption if message.caption else "")
+                    bot.send_video(user_id, message.video.file_id, caption=message.caption or "")
                 sent += 1
             except:
                 pass
-        bot.reply_to(message, f"✅ Реклама {sent} та фойдаланувчига юборилди!")
+        bot.reply_to(message, f"✅ Реклама {sent} та фойдаланувчига жўнатилди!")
         waiting_for_post = False
-    else:
-        # Агар реклама эмас, демак кино қидирмоқда
-        if message.content_type == "text":
-            send_movie(message)
 
-# === Flask Webhook ===
+# === FLASK WEBHOOK ===
 app = Flask(__name__)
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -181,7 +223,6 @@ def webhook():
 @app.route("/")
 def index():
     return "Bot is running!", 200
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
