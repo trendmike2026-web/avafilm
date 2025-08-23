@@ -1,5 +1,6 @@
-import telebot
+Flask
+pyTelegramBotAPI
+gunicorn
 
-TOKEN
 
 
