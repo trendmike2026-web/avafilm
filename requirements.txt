@@ -1,4 +1,5 @@
-pyTelegramBotAPI
-Flask
+import telebot
+
+TOKEN
 
 
