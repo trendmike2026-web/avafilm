@@ -3,7 +3,7 @@ import json
 import os
 from telebot import types
 
-TOKEN = "YOUR_BOT_TOKEN"
+TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
 ADMIN_ID = 786536728  # Админ ID
 
 # Kanal ID'лари
