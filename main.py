@@ -1,16 +1,14 @@
 import telebot
 import json
 import os
-import threading
-from flask import Flask
 
-TOKEN = os.getenv("BOT_TOKEN", "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M")
+TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
 ADMIN_ID = 786536728
+CHANNELS = ["-1001206627592", "-1002486463697", "-1002909479609"]
 
 bot = telebot.TeleBot(TOKEN)
 DB_FILE = "movies.json"
 
-# JSON база яратиш
 if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump({}, f, ensure_ascii=False, indent=4)
@@ -23,16 +21,33 @@ def save_movies(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# /start буйруғи
+def check_subscription(user_id):
+    """Фойдаланувчи барча каналларга обуна бўлганлигини текширади"""
+    for channel in CHANNELS:
+        try:
+            member = bot.get_chat_member(channel, user_id)
+            if member.status in ["left", "kicked"]:
+                return False
+        except:
+            return False
+    return True
+
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(
-        message,
-        "👋 Салом! Бу бот орқали сиз янги фильмлар ва сериалларни кўришингиз мумкин.\n\n"
-        "🔢 Менга кино рақамини ёзинг ва мен сизга топиб бераман."
+    if not check_subscription(message.from_user.id):
+        text = "📢 Ботдан фойдаланиш учун қуйидаги каналларга ОБУНА БЎЛИНГ:\n\n"
+        text += "1️⃣ [Kanal 1](https://t.me/avafilmss)\n"
+        text += "2️⃣ [Kanal 2](https://t.me/mysportuz)\n"
+        text += "3️⃣ [Kanal 3](https://t.me/shoubiznes_new)\n\n"
+        text += "✅ Обуна бўлгач, /start ни қайта босинг!"
+        bot.send_message(message.chat.id, text, parse_mode="Markdown")
+        return
+    
+    bot.reply_to(message, 
+        "👋 Салом! ✅ Сиз каналларга обуна бўлгансиз.\n\n"
+        "🔢 Кино рақамини ёзинг ва мен сизга топиб бераман."
     )
 
-# Админ видео қўшиши
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
     if message.from_user.id != ADMIN_ID:
@@ -44,9 +59,17 @@ def handle_video(message):
     save_movies(movies)
     bot.reply_to(message, f"✅ Кино сақланди! Рақами: {movie_id}")
 
-# Фильм қидириш
 @bot.message_handler(func=lambda m: True)
 def send_movie(message):
+    if not check_subscription(message.from_user.id):
+        text = "📢 Илтимос, аввал қуйидаги каналларга обуна бўлинг:\n\n"
+        text += "1️⃣ [Kanal 1](https://t.me/avafilmss)\n"
+        text += "2️⃣ [Kanal 2](https://t.me/mysportuz)\n"
+        text += "3️⃣ [Kanal 3](https://t.me/shoubiznes_new)\n\n"
+        text += "✅ Обуна бўлгач, /start ни қайта босинг!"
+        bot.send_message(message.chat.id, text, parse_mode="Markdown")
+        return
+    
     movies = load_movies()
     movie_id = message.text.strip()
     if movie_id in movies:
@@ -55,17 +78,5 @@ def send_movie(message):
     else:
         bot.reply_to(message, "❌ Бундай рақамли кино топилмади!")
 
-# Flask web server
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot is running ✅"
-
-def run_bot():
-    print("✅ Bot ишга тушди...")
-    bot.infinity_polling()
-
-if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+print("✅ Bot ишга тушди...")
+bot.infinity_polling()
