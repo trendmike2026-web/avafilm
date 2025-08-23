@@ -3,7 +3,7 @@ import json
 import os
 from telebot import types
 
-TOKEN = "🔑 СЕНИНГ БОТ TOKEN"
+TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
 ADMIN_ID = 786536728   # 🔑 ўз ID’ингни қўй
 
 # Kanal ID'лари
