@@ -47,3 +47,4 @@ def send_movie(message):
 
 print("✅ Bot ишга тушди...")
 bot.infinity_polling()
+
