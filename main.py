@@ -3,7 +3,7 @@ import json
 import os
 from telebot import types
 
-TOKEN = "TOKEN_YERGA"
+TOKEN = "8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M"
 ADMIN_ID = 786536728
 
 bot = telebot.TeleBot(TOKEN)
