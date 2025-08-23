@@ -1,18 +1,23 @@
 import telebot
+from telebot import types
 
 TOKEN = "SIZNING_BOT_TOKENINGIZ"
 bot = telebot.TeleBot(TOKEN)
 
-CHANNELS = [-1001206627592, -1002486463697, -1002909479609]
+CHANNELS = [
+    ("https://t.me/avafilmss", "📺 Kanal 1"),
+    ("https://t.me/mysportuz", "⚽ Kanal 2"),
+    ("https://t.me/shoubiznes_new", "🎶 Kanal 3")
+]
 
 def check_subscriptions(user_id):
-    for channel in CHANNELS:
+    ids = [-1001206627592, -1002486463697, -1002909479609]
+    for channel_id in ids:
         try:
-            chat_member = bot.get_chat_member(channel, user_id)
+            chat_member = bot.get_chat_member(channel_id, user_id)
             if chat_member.status in ["left", "kicked"]:
                 return False
-        except Exception as e:
-            print(f"Xato: {e}")
+        except:
             return False
     return True
 
@@ -20,48 +25,36 @@ def check_subscriptions(user_id):
 def start(message):
     user_id = message.from_user.id
     if check_subscriptions(user_id):
-        text = (
-            "🎬🎬🎬🎬🎬🎬🎬🎬🎬\n\n"
-            "👋 *Салом!* 🎥\n\n"
-            "✅ Бу бот орқали кино рақамини киритсангиз,\n"
-            "сизга фильм чиқиб келади.\n\n"
-            "👇 Қуйида кино рақамини юборинг 👇\n\n"
-            "🎬🎬🎬🎬🎬🎬🎬🎬🎬"
+        bot.send_message(
+            message.chat.id,
+            "🎬 *Салом!* Сиз ботдан фойдаланишингиз мумкин.\n\nКино рақамини юборинг:",
+            parse_mode="Markdown"
         )
-        bot.send_message(message.chat.id, text, parse_mode="Markdown")
     else:
-        text = (
-            "🚫🚫🚫🚫🚫🚫🚫🚫🚫\n\n"
-            "❌ *Ботдан фойдаланиш учун аввал каналларга обуна бўлинг!*\n\n"
-            "1️⃣ [Kanal 1](https://t.me/avafilmss)\n"
-            "2️⃣ [Kanal 2](https://t.me/mysportuz)\n"
-            "3️⃣ [Kanal 3](https://t.me/shoubiznes_new)\n\n"
-            "✅ Обуна бўлганингиздан сўнг /start ни қайта босинг!\n\n"
-            "🚫🚫🚫🚫🚫🚫🚫🚫🚫"
-        )
-        bot.send_message(message.chat.id, text, parse_mode="Markdown")
+        # Inline кнопкалар яратамиз
+        keyboard = types.InlineKeyboardMarkup()
+        for link, name in CHANNELS:
+            keyboard.add(types.InlineKeyboardButton(f"➕ Obuna bo‘lish ({name})", url=link))
+        keyboard.add(types.InlineKeyboardButton("✅ Tasdiqlash", callback_data="check_subs"))
 
-@bot.message_handler(func=lambda message: message.text.isdigit())
-def handle_movie_number(message):
-    user_id = message.from_user.id
-    if check_subscriptions(user_id):
-        movie_number = message.text
-        response = (
-            f"🎥 *Сиз киритган рақам:* {movie_number}\n\n"
-            "(Бу ерга фильмни юбориш кодини қўшиш керак)"
-        )
-        bot.send_message(message.chat.id, response, parse_mode="Markdown")
-    else:
         text = (
-            "🚫🚫🚫🚫🚫🚫🚫🚫🚫\n\n"
-            "❌ *Ботдан фойдаланиш учун аввал каналларга обуна бўлинг!*\n\n"
-            "1️⃣ [Kanal 1](https://t.me/avafilmss)\n"
-            "2️⃣ [Kanal 2](https://t.me/mysportuz)\n"
-            "3️⃣ [Kanal 3](https://t.me/shoubiznes_new)\n\n"
-            "✅ Обуна бўлганингиздан сўнг /start ни қайта босинг!\n\n"
-            "🚫🚫🚫🚫🚫🚫🚫🚫🚫"
+            "❌ *Ботдан фойдаланиш учун қуйидаги каналларга обуна бўлинг!* ❌\n\n"
+            "Обуна бўлганингиздан сўнг '✅ Tasdiqlash' тугмасини босинг 👇"
         )
-        bot.send_message(message.chat.id, text, parse_mode="Markdown")
+        bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=keyboard)
+
+@bot.callback_query_handler(func=lambda call: call.data == "check_subs")
+def callback_check(call):
+    user_id = call.from_user.id
+    if check_subscriptions(user_id):
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="✅ Рахмат! Сиз барча каналларга обуна бўлдингиз.\n\nЭнди кино рақамини юборинг 🎬",
+            parse_mode="Markdown"
+        )
+    else:
+        bot.answer_callback_query(call.id, "❌ Ҳали ҳамма каналга обуна бўлмагансиз!", show_alert=True)
 
 print("✅ Bot ishlayapti...")
 bot.infinity_polling()
