@@ -5,7 +5,7 @@ from telebot import types
 from flask import Flask, request
 
 # 🔑 Токен ва Админ ID
-TOKEN = os.environ.get("BOT_TOKEN")
+TOKEN = os.environ.get("8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "786536728"))
 
 # Канал ID'лари
@@ -158,7 +158,7 @@ def handle_video(message):
     bot.reply_to(message, f"✅ Кино қўшилди! Рақами: {movie_id}")
     adding_movie = False
 
-# === DELETE ===
+# === DELETE OR SEARCH ===
 @bot.message_handler(func=lambda m: m.text and m.text.isdigit())
 def handle_delete_or_search(message):
     global deleting_movie
@@ -214,7 +214,7 @@ def handle_post(message):
 # === FLASK WEBHOOK ===
 app = Flask(__name__)
 
-@app.route(f"/{TOKEN}", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook():
     update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
     bot.process_new_updates([update])
