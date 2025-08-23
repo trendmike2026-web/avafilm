@@ -6,7 +6,7 @@ from telebot import types
 from flask import Flask, request
 
 # 🔑 Токен ва Админ ID
-TOKEN = os.environ.get("BOT_TOKEN")
+TOKEN = os.environ.get("8427740917:AAEeRDdLZreYIoQQRezHFBINeTGC7Ed7c4M")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "786536728"))
 
 # Канал ID'лари
